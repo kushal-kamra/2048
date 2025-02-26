@@ -59,6 +59,7 @@
             border-radius: 5px;
             background-color: #ccc0b3;
             position: absolute;
+            transition: all 0.1s ease-in-out;
         }
         .tile {
             width: 80px;
@@ -115,15 +116,20 @@
             font-size: 18px;
         }
         @media (max-width: 480px) {
-            .game-container, .grid {
+            .game-container {
+                width: 280px;
+                margin: 10px auto;
+            }
+            .grid {
                 width: 280px;
                 height: 280px;
+                padding: 10px;
             }
             .cell, .tile {
-                width: 52px;
-                height: 52px;
-                margin: 7px;
-                line-height: 52px;
+                width: 57px;
+                height: 57px;
+                margin: 5px;
+                line-height: 57px;
                 font-size: 20px;
             }
             .tile-128, .tile-256, .tile-512 {
@@ -134,6 +140,10 @@
             }
             h1 {
                 font-size: 50px;
+            }
+            .score-box {
+                width: 80px;
+                padding: 8px 10px;
             }
         }
     </style>
@@ -175,6 +185,10 @@
         let won = false;
         let continueAfterWin = false;
         let size = 4;
+        let isMobile = false;
+        let tileSize = 80;
+        let tileMargin = 10;
+        let gridSize = 400;
         
         // DOM elements
         const gridElement = document.getElementById("grid");
@@ -182,6 +196,28 @@
         const bestScoreElement = document.getElementById("best-score");
         const gameOverElement = document.getElementById("game-over");
         const gameWonElement = document.getElementById("game-won");
+        
+        // Check if we're on mobile
+        function checkMobile() {
+            isMobile = window.innerWidth <= 480;
+            if (isMobile) {
+                tileSize = 57;
+                tileMargin = 5;
+                gridSize = 280;
+            } else {
+                tileSize = 80;
+                tileMargin = 10;
+                gridSize = 400;
+            }
+        }
+        
+        // Calculate position for a tile
+        function calculatePosition(row, col) {
+            return {
+                top: row * (tileSize + tileMargin * 2) + tileMargin,
+                left: col * (tileSize + tileMargin * 2) + tileMargin
+            };
+        }
         
         // Load best score from local storage
         function loadBestScore() {
@@ -207,8 +243,9 @@
                 for (let j = 0; j < size; j++) {
                     const cell = document.createElement("div");
                     cell.className = "cell";
-                    cell.style.top = (i * 100) + "px";
-                    cell.style.left = (j * 100) + "px";
+                    const position = calculatePosition(i, j);
+                    cell.style.top = position.top + "px";
+                    cell.style.left = position.left + "px";
                     gridElement.appendChild(cell);
                 }
             }
@@ -246,8 +283,9 @@
             const tile = document.createElement("div");
             tile.className = `tile tile-${grid[randomCell.row][randomCell.col]}`;
             tile.textContent = grid[randomCell.row][randomCell.col];
-            tile.style.top = (randomCell.row * 100) + "px";
-            tile.style.left = (randomCell.col * 100) + "px";
+            const position = calculatePosition(randomCell.row, randomCell.col);
+            tile.style.top = position.top + "px";
+            tile.style.left = position.left + "px";
             tile.dataset.row = randomCell.row;
             tile.dataset.col = randomCell.col;
             
@@ -278,8 +316,9 @@
                         const tile = document.createElement("div");
                         tile.className = `tile tile-${grid[i][j]}`;
                         tile.textContent = grid[i][j];
-                        tile.style.top = (i * 100) + "px";
-                        tile.style.left = (j * 100) + "px";
+                        const position = calculatePosition(i, j);
+                        tile.style.top = position.top + "px";
+                        tile.style.left = position.left + "px";
                         tile.dataset.row = i;
                         tile.dataset.col = j;
                         gridElement.appendChild(tile);
@@ -489,6 +528,7 @@
         
         // Start a new game
         function startGame() {
+            checkMobile();
             score = 0;
             scoreElement.textContent = "0";
             gameOver = false;
@@ -534,7 +574,7 @@
         
         gridElement.addEventListener("touchmove", function(event) {
             event.preventDefault();
-        }, false);
+        }, { passive: false });
         
         gridElement.addEventListener("touchend", function(event) {
             touchEndX = event.changedTouches[0].clientX;
@@ -564,49 +604,22 @@
             }
         }
         
-        // Responsive grid adjustment
-        function adjustGridForMobile() {
-            const isMobile = window.innerWidth <= 480;
-            const cells = document.querySelectorAll(".cell");
-            const tiles = document.querySelectorAll(".tile");
+        // Handle window resize
+        window.addEventListener("resize", function() {
+            const oldMobile = isMobile;
+            checkMobile();
             
-            if (isMobile) {
-                cells.forEach((cell, index) => {
-                    const row = Math.floor(index / size);
-                    const col = index % size;
-                    cell.style.top = (row * 66) + "px";
-                    cell.style.left = (col * 66) + "px";
-                });
-                
-                tiles.forEach(tile => {
-                    const row = parseInt(tile.dataset.row);
-                    const col = parseInt(tile.dataset.col);
-                    tile.style.top = (row * 66) + "px";
-                    tile.style.left = (col * 66) + "px";
-                });
-            } else {
-                cells.forEach((cell, index) => {
-                    const row = Math.floor(index / size);
-                    const col = index % size;
-                    cell.style.top = (row * 100) + "px";
-                    cell.style.left = (col * 100) + "px";
-                });
-                
-                tiles.forEach(tile => {
-                    const row = parseInt(tile.dataset.row);
-                    const col = parseInt(tile.dataset.col);
-                    tile.style.top = (row * 100) + "px";
-                    tile.style.left = (col * 100) + "px";
-                });
+            // Only redraw if mobile state changed
+            if (oldMobile !== isMobile) {
+                initGrid();
+                renderGrid();
             }
-        }
-        
-        window.addEventListener("resize", adjustGridForMobile);
+        });
         
         // Initialize the game
         loadBestScore();
+        checkMobile();
         startGame();
-        adjustGridForMobile();
     </script>
 </body>
 </html>
